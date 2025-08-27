@@ -20,7 +20,7 @@ type WorkerPool struct {
 	maxWorkers int
 	jobQueue   chan Job
 	wg         sync.WaitGroup
-	done       chan error
+	errChan    chan error
 	ctx        context.Context    // To cancel the pool's context
 	cancel     context.CancelFunc // Context for the pool's lifecycle
 	db         *gorm.DB
@@ -28,11 +28,11 @@ type WorkerPool struct {
 
 func NewWorkerPool(db *gorm.DB, maxWorkers, queueSize int) *WorkerPool {
 	jobQueue := make(chan Job, queueSize)
-	done := make(chan error, maxWorkers) // Create buffered channel
+	errChan := make(chan error, maxWorkers) // Create buffered channel
 	workerPool := &WorkerPool{
 		maxWorkers: maxWorkers,
 		jobQueue:   jobQueue,
-		done:       done,
+		errChan:    errChan,
 		db:         db,
 	}
 
@@ -48,18 +48,41 @@ func (pool *WorkerPool) Start(ctx context.Context) {
 			// what ever happend, if the job queue less than worker, the worker still run
 			defer pool.wg.Done()
 			fmt.Printf("Worker started %d", workId)
-			for job := range pool.jobQueue {
-				// processLog(workId, job.Log)
-				if err := pool.InsertLogs(ctx, &job.Log); err != nil {
-					fmt.Printf("Worker %d: error inserting log: %v\n", workId, err)
-					pool.done <- err // Send error to the done channel
-					return
+			for {
+				// Loop indefinitely until context is done or jobQueue closed
+				select {
+				case <-pool.ctx.Done():
+					//shutdown worker, cancel from ctx
+					fmt.Printf("Worker %d: context cancelled, shutting down\n", workId)
+					return // Exit goroutine
+				case job, ok := <-pool.jobQueue:
+					if !ok { // empty job queue, channel already close and empty channel
+						fmt.Printf("Worker %d, jobQueue already closed, shutingdown the job", workId)
+					}
+
+					if err := pool.InsertLogs(pool.ctx, &job.Log); err != nil {
+						fmt.Printf("Worker %d: error inserting log: %v\n", workId, err)
+						pool.errChan <- err // Send error to the error channel
+					} else {
+						fmt.Printf("worker done", workId)
+					}
 				}
-				pool.done <- nil // Signal successful completions
 			}
-			fmt.Printf("worker done", workId)
+
 		}(i + 1)
 	}
+	// made some handle error worker from error chan
+	// maybe will working on it laters
+	go func() {
+		for err := range pool.errChan {
+			if err != nil {
+				fmt.Printf("WorkerPool Error: %v\n", err)
+				// do something here
+				// maybe send or working something
+			}
+		}
+		fmt.Println("Error monitor goroutine stopped.")
+	}()
 }
 
 // processLog simulates the work of processing a log entry.
@@ -75,16 +98,24 @@ func (pool *WorkerPool) Submit(ctx context.Context, job Job) error {
 	// when channel context is done() then we can return context an error
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-pool.ctx.Done(): // Pool itself is shutting down
+		return fmt.Errorf("worker pool is shutting down")
 	case pool.jobQueue <- job:
 		return nil
-	default:
-		return nil
+
+		// Removed the 'default' case to ensure backpressure.
+		// If you truly need non-blocking and don't care about dropped jobs, re-add.
 	}
 }
 
 func (pool *WorkerPool) Shutdown(ctx context.Context) {
+	// Cancel the pool's context first to signal workers to stop accepting new jobs
+	pool.cancel()
+	// Then close the job queue so workers finish current jobs and exit their loopss
 	close(pool.jobQueue)
+	// Wait for all workers to finish
 	pool.wg.Wait()
+	close(pool.errChan)
 }
 
 func (pool *WorkerPool) InsertLogs(ctx context.Context, log *models.LogType) error {
