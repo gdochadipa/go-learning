@@ -1,18 +1,46 @@
+#standard boiler plate template version
 AWSTemplateFormatVersion: '2010-09-09'
+#the most important line, this mean give information to AWS Cloudformation to define this is a SAM
 Transform: AWS::Serverless-2016-10-31
+# description of this template, what template this workin on
 Description: >
   go-lambda-example
 
   Sample SAM Template for go-lambda-example
 
+# this define what Resource does, like define function or serverless
 Resources:
+  # logical name that you define as function name / server / application
+  # you can define name by using field Name
   HelloWorldFunction:
+    # define type of function, example this define for serverless function
+    # this also important for IAM Role
     Type: AWS::Serverless::Function
+    # configuration when deploy to AWS
     Properties:
+      # default is type .zip
+      # PackageType Image mean we will deploy it as container image.
+      # AWS will pull it from Amazon ECR repository and then run the function
       PackageType: Image
+      # this function define what function will running on
+      # this will run on ARM64, more price-perfomance than x86 64 processor
       Architectures:
         - arm64
+    # one of imporant thing is
+    # this define how SAM CLI build procesing run, more like instructions
     Metadata:
+      # set tag for docker image
       DockerTag: go-lambda-example-v1
+      # define which directory must running the build process (docker build)
       DockerContext: .
+      # SAM look file named "Dockerfile" on DockerContext directory for build construction of docker image
       Dockerfile: Dockerfile
+
+
+## In Nutshell
+# when you run using `` sam build ``. the SAM CLI will reads the `` Metadata `` sections.
+# it will executed using `` Dockerfile `` on directory `` . `` (which mean on root directory)
+# and using tag called ``go-lambda-example-v1``
+
+# when you run deply `` sam deploy ``. SAM push this container image to ECR Repository AWS
+# and then uses `` Properties `` to create lambda function.
