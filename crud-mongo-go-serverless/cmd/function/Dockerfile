@@ -1,4 +1,4 @@
-
+#TODO : Custom it and runn only targeted docker file
 # Stage 1: Build the Go binary
 FROM golang:1.24-alpine AS builder
 
@@ -14,7 +14,7 @@ COPY . .
 
 # Build the Go application for a Linux environment
 # The output is named 'bootstrap' as expected by the AWS Lambda custom runtime
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /bootstrap ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /bootstrap ./cmd/function/main.go
 
 # Stage 2: Create the final runtime image
 FROM public.ecr.aws/lambda/provided:al2023
