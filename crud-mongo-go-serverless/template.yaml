@@ -10,7 +10,9 @@ Globals:
     MemorySize: 128
 
 Resources:
-  HelloWorldFunction:
+  # actually this name of resource will comparable with name on Makefile,
+  # example HttpHelloWorldFunction will compare able with build-HttpHelloWorldFunction
+  HttpHelloWorldFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: go-makefile-example
