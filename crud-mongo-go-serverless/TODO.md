@@ -1,0 +1,7 @@
+- [] add debugin package
+- [] integration mongodb go
+- [] graphql crud
+- [] try to setup test go ]
+  - [] per handler or function
+  - [] per endpoint (end to end)
+- [] setup development helper package (like air)

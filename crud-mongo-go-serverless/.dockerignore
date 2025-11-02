@@ -1,0 +1,30 @@
+# Version control
+.git
+.gitignore
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test files
+**/*_test.go
+**/testdata
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# AWS SAM
+.aws-sam/
+
+# Misc
+README.md
+Makefile
+template.yaml

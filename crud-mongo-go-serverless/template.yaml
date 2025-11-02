@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  A sample SAM template for a Go serverless application using a Makefile for builds and Zip packaging.
+
+# define global settings for some resource
+Globals:
+  Function:
+    Timeout: 5
+    MemorySize: 128
+
+Resources:
+  # actually this name of resource will comparable with name on Makefile,
+  # example HttpHelloWorldFunction will compare able with build-HttpHelloWorldFunction
+  HttpHelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: go-makefile-example
+      CodeUri: .
+      PackageType: Zip
+      Runtime: provided.al2023
+      Handler: bootstrap
+      Architectures:
+        - arm64
+      Events:
+        # define kind / type event will invokes the lambda
+        HelloWorldApi:
+          Type: Api
+          Properties:
+            Path: /hello
+            Method: GET
+    Metadata:
+      BuildMethod: makefile
